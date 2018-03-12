@@ -1,6 +1,6 @@
 import traceback
 from time import sleep
-
+import datetime
 from bliknetlib.serialNodesProtocol import SerialNodesProtocol
 from twisted.internet.serialport import SerialPort
 from twisted.internet import reactor, task
@@ -14,17 +14,10 @@ class SerialNodesController(object):
     def __init__(self, oNodeControl):
         self._NodeControl = oNodeControl
         self._AfterPIREvent = None
-
+        self._ResetState = 10
 
         # list all serial ports: python -m serial.tools.list_ports
-        """self._serialPort = SerialPort(myProtocol, oNodeControl.nodeProps.get('serialnodes', 'serialport'),
-                                      reactor,
-                                      baudrate=9600,
-                                      bytesize=serial.EIGHTBITS,
-                                      parity=serial.PARITY_NONE)  """
         self._connectSerialPort()
-        # RGBColors.sendRGBValue(self, self._NodeControl, 752, RGBColors.CONTROLLERREADY)
-        # self.setNormalState()
         l = task.LoopingCall(self.eCheckLights)
         l.start(300)
 
@@ -49,6 +42,10 @@ class SerialNodesController(object):
             if int(RecMsg.Function)==1:
                 # PIR alert
                 if self._AfterPIREvent is None:
+                    self._NodeControl.MQTTPublish(sTopic="overloop/pirevent", sValue="ON",
+                                                  iQOS=0,
+                                                  bRetain=False)
+                    reactor.callLater(self._ResetState, self.ResetState, topic="overloop/pirevent")
                     if ARMED:
                         RGBColors.sendEffectScheme(self, self._NodeControl, 752, RGBColors.EFFECT_ALERT)
                     elif astro_functions.isDusk(self._NodeControl):
@@ -59,6 +56,9 @@ class SerialNodesController(object):
 
     def afterPIREvent(self):
         reactor.callFromThread(self.switchToNoneAlertState)
+
+    def ResetState(self, topic):
+        self._NodeControl.MQTTPublish(sTopic=topic, sValue="OFF", iQOS=0, bRetain=False)
 
     def switchToNoneAlertState(self):
         self._AfterPIREvent = None
@@ -75,9 +75,6 @@ class SerialNodesController(object):
 
     def SendMessage(self, sSerialMessage):
         try:
-            # self._serialPort.flushInput()  # flush input buffer, discarding all its contents
-            # self._serialPort.flushOutput()  # flush output buffer, aborting current output
-            # and discard all that is in buffer
             self._serialPort.write(sSerialMessage)
             sleep(0.1)
             return True
