@@ -1,0 +1,15 @@
+[Unit]
+Description=Bliknet RGB App
+After=network-online.target
+
+[Service]
+Type=simple
+User=%i
+Restart=on-failure
+WorkingDirectory=/opt/bliknet/RGBController/app/
+ExecStart=/opt/bliknet/RGBController/virtualenv/bin/python /opt/bliknet/RGBController/app/BliknetNode.py
+WatchdogSec=1800
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

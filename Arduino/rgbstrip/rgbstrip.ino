@@ -193,7 +193,7 @@ void loop() {
 #ifdef DEBUG
           Serial.println("message NACK!");
 #endif
-          // resend
+          // TODO: dit kan potentieel niet de laatste message zijn, resend
           SendMessage();
         }; // if NACK
       }; // if this node
